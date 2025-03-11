@@ -4,9 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Evapotranspiración Web</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body { font-family: Arial, sans-serif; text-align: center; margin: 20px; }
         #map { height: 400px; width: 100%; margin-top: 20px; }
@@ -14,26 +14,26 @@
         table { margin-top: 20px; }
     </style>
 </head>
-<body class="bg-light">
-    <div class="container shadow-lg p-4 bg-white rounded">
-        <h1 class="text-primary">Calculadora de Evapotranspiración</h1>
-        <div class="row mb-3">
-            <div class="col">
-                <input type="text" id="lat" class="form-control" placeholder="Ingrese latitud">
+<body class="grey lighten-4">
+    <div class="container white z-depth-2">
+        <h1 class="blue-text text-darken-2">Calculadora de Evapotranspiración</h1>
+        <div class="row">
+            <div class="input-field col s12 m6">
+                <input type="text" id="lat" class="validate">
+                <label for="lat">Ingrese latitud</label>
             </div>
-            <div class="col">
-                <input type="text" id="lon" class="form-control" placeholder="Ingrese longitud">
-            </div>
-            <div class="col">
-                <button class="btn btn-primary" onclick="calcularET()">Obtener Predicción</button>
+            <div class="input-field col s12 m6">
+                <input type="text" id="lon" class="validate">
+                <label for="lon">Ingrese longitud</label>
             </div>
         </div>
-        <p id="resultado" class="text-success"></p>
+        <button class="btn waves-effect waves-light blue" onclick="calcularET()">Obtener Predicción</button>
+        <p id="resultado" class="green-text"></p>
 
-        <h2 class="text-secondary">Previsión Climática (14 días)</h2>
-        <table class="table table-bordered">
+        <h2 class="blue-text text-darken-2">Previsión Climática (14 días)</h2>
+        <table class="highlight responsive-table">
             <thead>
-                <tr class="table-primary">
+                <tr>
                     <th>Fecha</th>
                     <th>Temp. Máx (°C)</th>
                     <th>Temp. Mín (°C)</th>
@@ -46,12 +46,13 @@
             <tbody id="tablaDatos">
             </tbody>
         </table>
-        <button id="exportar_csv" class="btn btn-secondary" style="display:none;" onclick="exportarCSV()">Exportar a CSV</button>
+        <button id="exportar_csv" class="btn waves-effect waves-light grey" style="display:none;" onclick="exportarCSV()">Exportar a CSV</button>
 
-        <h2 class="text-secondary">Mapa Interactivo</h2>
+        <h2 class="blue-text text-darken-2">Mapa Interactivo</h2>
         <div id="map"></div>
     </div>
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
     <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
     <script>
         var map = L.map('map').setView([-33.0, -56.0], 6);
