@@ -78,6 +78,7 @@ def calcular():
             len(parametros.get("temperature_mean", [])),
             len(parametros.get("windspeed_mean", []))  # Agregamos el viento
         )
+        print(f"Número de días disponibles: {num_dias}")
 
         if num_dias == 0:
             return jsonify({'error': 'No hay datos suficientes en meteoblue'}), 500
@@ -142,5 +143,5 @@ def exportar_csv():
         return jsonify({'error': f'Error al exportar CSV: {str(e)}'}), 500
 
 if __name__ == '__main__':
-    app.run(debug=True)
-
+    port = int(os.environ.get('PORT', 5000))
+    app.run(debug=True, host='0.0.0.0', port=port)
