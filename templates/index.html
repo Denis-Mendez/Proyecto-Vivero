@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Evapotranspiración Web</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; margin: 20px; }
+        #map { height: 400px; width: 100%; margin-top: 20px; }
+        .container { max-width: 900px; margin: auto; }
+        table { margin-top: 20px; }
+    </style>
+</head>
+<body class="bg-light">
+    <div class="container shadow-lg p-4 bg-white rounded">
+        <h1 class="text-primary">Calculadora de Evapotranspiración</h1>
+        <div class="row mb-3">
+            <div class="col">
+                <input type="text" id="lat" class="form-control" placeholder="Ingrese latitud">
+            </div>
+            <div class="col">
+                <input type="text" id="lon" class="form-control" placeholder="Ingrese longitud">
+            </div>
+            <div class="col">
+                <button class="btn btn-primary" onclick="calcularET()">Obtener Predicción</button>
+            </div>
+        </div>
+        <p id="resultado" class="text-success"></p>
+
+        <h2 class="text-secondary">Previsión Climática (14 días)</h2>
+        <table class="table table-bordered">
+            <thead>
+                <tr class="table-primary">
+                    <th>Fecha</th>
+                    <th>Temp. Máx (°C)</th>
+                    <th>Temp. Mín (°C)</th>
+                    <th>Humedad (%)</th>
+                    <th>Radiación Solar (MJ/m²)</th>
+                    <th>Viento (m/s)</th>
+                    <th>ET₀ (mm/día)</th>
+                </tr>
+            </thead>
+            <tbody id="tablaDatos">
+            </tbody>
+        </table>
+        <button id="exportar_csv" class="btn btn-secondary" style="display:none;" onclick="exportarCSV()">Exportar a CSV</button>
+
+        <h2 class="text-secondary">Mapa Interactivo</h2>
+        <div id="map"></div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
+    <script>
+        var map = L.map('map').setView([-33.0, -56.0], 6);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(map);
+
+        var marker;
+        map.on('click', function(e) {
+            if (marker) { map.removeLayer(marker); }
+            marker = L.marker([e.latlng.lat, e.latlng.lng]).addTo(map);
+            document.getElementById('lat').value = e.latlng.lat;
+            document.getElementById('lon').value = e.latlng.lng;
+        });
+
+        function calcularET() {
+            let lat = document.getElementById('lat').value;
+            let lon = document.getElementById('lon').value;
+            
+            if (!lat || !lon) {
+                document.getElementById('resultado').innerText = 'Por favor ingrese latitud y longitud válidas';
+                return;
+            }
+            
+            fetch('/calcular', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ lat: lat, lon: lon })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`Error en la solicitud: ${response.status} ${response.statusText}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.predicciones) {
+                    actualizarTabla(data.predicciones);
+                    document.getElementById('exportar_csv').style.display = 'block';
+                    document.getElementById('exportar_csv').dataset.predicciones = JSON.stringify(data.predicciones);
+                } else {
+                    document.getElementById('resultado').innerText = 'Error obteniendo datos';
+                }
+            })
+            .catch(error => {
+                document.getElementById('resultado').innerText = `Error: ${error.message}`;
+            });
+        }
+
+        function actualizarTabla(predicciones) {
+            let tabla = document.getElementById('tablaDatos');
+            tabla.innerHTML = '';
+            predicciones.forEach(dia => {
+                let fila = `<tr>
+                    <td>${dia.fecha}</td>
+                    <td>${dia.T_max}°C</td>
+                    <td>${dia.T_min}°C</td>
+                    <td>${dia.Humedad}%</td>
+                    <td>${dia.Radiacion} MJ/m²</td>
+                    <td>${dia.Viento} m/s</td>
+                    <td>${dia.ET0} mm/día</td>
+                </tr>`;
+                tabla.innerHTML += fila;
+            });
+        }
+
+        function exportarCSV() {
+            const predicciones = JSON.parse(document.getElementById('exportar_csv').dataset.predicciones);
+            fetch('/exportar_csv', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ predicciones: predicciones })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`Error al exportar CSV: ${response.status} ${response.statusText}`);
+                }
+                return response.blob();
+            })
+            .then(blob => {
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = url;
+                a.download = 'predicciones.csv';
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+            })
+            .catch(error => {
+                alert(`Error al exportar CSV: ${error.message}`);
+            });
+        }
+
+        // Asegurar que el mapa se renderice correctamente al cargar la página
+        setTimeout(() => {
+            map.invalidateSize();
+        }, 500);
+    </script>
+</body>
+</html>
