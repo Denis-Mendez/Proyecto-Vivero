@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Grados Día Acumulados</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { padding: 20px; background-color: #f7f9fc; font-family: 'Segoe UI', sans-serif; }
+        .alerta-gd { font-weight: bold; color: red; }
+        .table td, .table th { text-align: center; }
+        .high-warning {
+            background-color: #fff3cd;
+            border-left: 5px solid #ff8800;
+            padding: 15px;
+            margin-bottom: 20px;
+            font-size: 1.1rem;
+        }
+        .high-warning strong {
+            color: #d9534f;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="mb-4">Grados Día Acumulados (GD)</h1>
+
+        {% if alerta %}
+            <div class="alert alert-warning">
+                🔥 <strong>Advertencia:</strong> Se han detectado días con grados día elevados. Es probable que la planta esté creciendo rápidamente.
+            </div>
+        {% endif %}
+
+        <p><strong>Total acumulado de GD:</strong> {{ total_gd }}</p>
+
+        <table class="table table-hover table-bordered mt-4 shadow-sm">
+            <thead class="table-light">
+                <tr>
+                    <th>📅 Fecha</th>
+                    <th>🌡️ GD del Día</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for fila in datos %}
+                    <tr>
+                        <td>{{ fila.Fecha }}</td>
+                        <td class="{{ 'alerta-gd' if fila.GD >= 18 else '' }}">{{ fila.GD }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <h4 class="mt-5 text-secondary">📈 Evolución Diaria de GD</h4>
+        <canvas id="graficoGD"></canvas>
+
+        <h4 class="mt-5 text-secondary">🌡️ Temperaturas Promedio Diarias</h4>
+        <canvas id="graficoTempPromedio"></canvas>
+
+        <!-- Botón para volver al inicio -->
+        <div class="mt-5 text-center">
+            <a href="/" class="btn btn-primary btn-lg">
+                ⬅️ Volver al Inicio
+            </a>
+        </div>
+    </div>
+
+    <script>
+        // Datos para el gráfico de GD
+        const fechas = {{ fechas | tojson }};
+        const valoresGD = {{ valores_gd | tojson | safe }};
+
+        const ctxGD = document.getElementById('graficoGD').getContext('2d');
+        new Chart(ctxGD, {
+            type: 'line',
+            data: {
+                labels: fechas,
+                datasets: [{
+                    label: 'GD diario',
+                    data: valoresGD,
+                    fill: false,
+                    borderColor: 'green',
+                    tension: 0.3
+                }]
+            },
+            options: {
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: { display: true, text: 'Grados Día (GD)' }
+                    },
+                    x: {
+                        title: { display: true, text: 'Fecha' }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        labels: { color: 'black' }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return `GD: ${context.raw} °C`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        // Datos para el gráfico de temperaturas promedio
+        const temperaturasPromedio = {{ temperaturas_promedio | tojson | safe }};
+
+        const ctxTempPromedio = document.getElementById('graficoTempPromedio').getContext('2d');
+        new Chart(ctxTempPromedio, {
+            type: 'line',
+            data: {
+                labels: fechas,
+                datasets: [{
+                    label: 'Temperatura Promedio (°C)',
+                    data: temperaturasPromedio,
+                    fill: false,
+                    borderColor: 'blue',
+                    tension: 0.3
+                }]
+            },
+            options: {
+                scales: {
+                    y: {
+                        beginAtZero: false,
+                        title: { display: true, text: 'Temperatura Promedio (°C)' }
+                    },
+                    x: {
+                        title: { display: true, text: 'Fecha' }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        labels: { color: 'black' }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return `Temp Promedio: ${context.raw} °C`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+</html>

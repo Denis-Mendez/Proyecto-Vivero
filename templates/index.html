@@ -1,156 +1,205 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Evapotranspiración Web</title>
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
-    <style>
-        body { font-family: Arial, sans-serif; text-align: center; margin: 20px; }
-        #map { height: 400px; width: 100%; margin-top: 20px; }
-        .container { max-width: 900px; margin: auto; }
-        table { margin-top: 20px; }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Evapotranspiración Web</title>
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
+  <style>
+    body { font-family: Arial, sans-serif; background-color: #f5f5f5; }
+    .container { max-width: 1000px; margin: auto; padding: 20px; }
+    #map { height: 400px; width: 100%; margin-top: 20px; }
+    table { margin-top: 20px; }
+    .btn-floating { position: fixed; bottom: 25px; right: 25px; }
+  </style>
 </head>
-<body class="grey lighten-4">
-    <div class="container white z-depth-2">
-        <h1 class="blue-text text-darken-2">Calculadora de Evapotranspiración</h1>
-        <div class="row">
-            <div class="input-field col s12 m6">
-                <input type="text" id="lat" class="validate">
-                <label for="lat">Ingrese latitud</label>
-            </div>
-            <div class="input-field col s12 m6">
-                <input type="text" id="lon" class="validate">
-                <label for="lon">Ingrese longitud</label>
-            </div>
-        </div>
-        <button class="btn waves-effect waves-light blue" onclick="calcularET()">Obtener Predicción</button>
-        <p id="resultado" class="green-text"></p>
+<body>
 
-        <h2 class="blue-text text-darken-2">Previsión Climática (14 días)</h2>
-        <table class="highlight responsive-table">
-            <thead>
-                <tr>
-                    <th>Fecha</th>
-                    <th>Temp. Máx (°C)</th>
-                    <th>Temp. Mín (°C)</th>
-                    <th>Humedad (%)</th>
-                    <th>Radiación Solar (MJ/m²)</th>
-                    <th>Viento (m/s)</th>
-                    <th>ET₀ (mm/día)</th>
-                </tr>
-            </thead>
-            <tbody id="tablaDatos">
-            </tbody>
-        </table>
-        <button id="exportar_csv" class="btn waves-effect waves-light grey" style="display:none;" onclick="exportarCSV()">Exportar a CSV</button>
+  <div class="container white z-depth-2">
+    <h4 class="blue-text text-darken-2 center-align">🌿 Simulador de Clima para Vivero</h4>
 
-        <h2 class="blue-text text-darken-2">Mapa Interactivo</h2>
-        <div id="map"></div>
+    <div class="row">
+      <div class="input-field col s12 m6">
+        <input type="text" id="lat" class="validate">
+        <label for="lat">Ingrese latitud</label>
+      </div>
+      <div class="input-field col s12 m6">
+        <input type="text" id="lon" class="validate">
+        <label for="lon">Ingrese longitud</label>
+      </div>
     </div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
-    <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
-    <script>
-        var map = L.map('map').setView([-33.0, -56.0], 6);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; OpenStreetMap contributors'
-        }).addTo(map);
+    <div class="center-align">
+      <button class="btn waves-effect waves-light blue" onclick="calcularET()">
+        Obtener Predicción <i class="material-icons right">cloud</i>
+      </button>
+    </div>
 
-        var marker;
-        map.on('click', function(e) {
-            if (marker) { map.removeLayer(marker); }
-            marker = L.marker([e.latlng.lat, e.latlng.lng]).addTo(map);
-            document.getElementById('lat').value = e.latlng.lat;
-            document.getElementById('lon').value = e.latlng.lng;
-        });
+    <p id="resultado" class="green-text center-align"></p>
 
-        function calcularET() {
-            let lat = document.getElementById('lat').value;
-            let lon = document.getElementById('lon').value;
-            
-            if (!lat || !lon) {
-                document.getElementById('resultado').innerText = 'Por favor ingrese latitud y longitud válidas';
-                return;
-            }
-            
-            fetch('/calcular', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ lat: lat, lon: lon })
-            })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`Error en la solicitud: ${response.status} ${response.statusText}`);
-                }
-                return response.json();
-            })
-            .then(data => {
-                if (data.predicciones) {
-                    actualizarTabla(data.predicciones);
-                    document.getElementById('exportar_csv').style.display = 'block';
-                    document.getElementById('exportar_csv').dataset.predicciones = JSON.stringify(data.predicciones);
-                } else {
-                    document.getElementById('resultado').innerText = 'Error obteniendo datos';
-                }
-            })
-            .catch(error => {
-                document.getElementById('resultado').innerText = `Error: ${error.message}`;
-            });
+    <h5 class="blue-text text-darken-2">📅 Previsión Climática (14 días)</h5>
+    <table class="highlight responsive-table">
+      <thead>
+        <tr>
+          <th>Fecha</th>
+          <th>Temp. Máx (°C)</th>
+          <th>Temp. Mín (°C)</th>
+          <th>Humedad (%)</th>
+          <th>Radiación (MJ/m²)</th>
+          <th>Viento (m/s)</th>
+          <th>ET₀ (mm/día)</th>
+        </tr>
+      </thead>
+      <tbody id="tablaDatos"></tbody>
+    </table>
+
+    <div class="center-align" style="margin-top: 20px;">
+      <button id="exportar_csv" class="btn grey lighten-1" style="display:none;" onclick="exportarCSV()">
+        Exportar a CSV
+      </button>
+    </div>
+
+    <h5 class="blue-text text-darken-2">🗺️ Mapa Interactivo</h5>
+    <div id="map"></div>
+
+    <div class="section center-align" style="margin-top: 40px;">
+      <a href="/grados-dia" class="waves-effect waves-light btn green darken-1" onclick="verGradosDia()">
+        <i class="material-icons left">trending_up</i> Ver Grados Día Acumulados
+      </a>
+    </div>
+  </div>
+
+  <!-- Librerías JS -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+  <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
+
+  <script>
+    var map = L.map('map').setView([-33.0, -56.0], 6);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+
+    var marker;
+    map.on('click', function(e) {
+      if (marker) { map.removeLayer(marker); }
+      marker = L.marker([e.latlng.lat, e.latlng.lng]).addTo(map);
+      document.getElementById('lat').value = e.latlng.lat;
+      document.getElementById('lon').value = e.latlng.lng;
+    });
+
+    function calcularET() {
+      let lat = document.getElementById('lat').value;
+      let lon = document.getElementById('lon').value;
+
+      if (!lat || !lon) {
+        document.getElementById('resultado').innerText = 'Por favor ingrese latitud y longitud válidas';
+        return;
+      }
+
+      fetch('/calcular', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lat: lat, lon: lon })
+      })
+      .then(response => {
+        if (!response.ok) {
+          throw new Error(`Error en la solicitud: ${response.status} ${response.statusText}`);
         }
-
-        function actualizarTabla(predicciones) {
-            let tabla = document.getElementById('tablaDatos');
-            tabla.innerHTML = '';
-            predicciones.forEach(dia => {
-                let fila = `<tr>
-                    <td>${dia.fecha}</td>
-                    <td>${dia.T_max}°C</td>
-                    <td>${dia.T_min}°C</td>
-                    <td>${dia.Humedad}%</td>
-                    <td>${dia.Radiacion} MJ/m²</td>
-                    <td>${dia.Viento} m/s</td>
-                    <td>${dia.ET0} mm/día</td>
-                </tr>`;
-                tabla.innerHTML += fila;
-            });
+        return response.json();
+      })
+      .then(data => {
+        if (data.predicciones) {
+          actualizarTabla(data.predicciones);
+          document.getElementById('exportar_csv').style.display = 'block';
+          document.getElementById('exportar_csv').dataset.predicciones = JSON.stringify(data.predicciones);
+        } else {
+          document.getElementById('resultado').innerText = 'Error obteniendo datos';
         }
+      })
+      .catch(error => {
+        document.getElementById('resultado').innerText = `Error: ${error.message}`;
+      });
+    }
 
-        function exportarCSV() {
-            const predicciones = JSON.parse(document.getElementById('exportar_csv').dataset.predicciones);
-            fetch('/exportar_csv', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ predicciones: predicciones })
-            })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`Error al exportar CSV: ${response.status} ${response.statusText}`);
-                }
-                return response.blob();
-            })
-            .then(blob => {
-                const url = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.style.display = 'none';
-                a.href = url;
-                a.download = 'predicciones.csv';
-                document.body.appendChild(a);
-                a.click();
-                window.URL.revokeObjectURL(url);
-            })
-            .catch(error => {
-                alert(`Error al exportar CSV: ${error.message}`);
-            });
+    function actualizarTabla(predicciones) {
+      let tabla = document.getElementById('tablaDatos');
+      tabla.innerHTML = '';
+      predicciones.forEach(dia => {
+        let fila = `<tr>
+          <td>${dia.fecha}</td>
+          <td>${dia.T_max}°C</td>
+          <td>${dia.T_min}°C</td>
+          <td>${dia.Humedad}%</td>
+          <td>${dia.Radiacion} MJ/m²</td>
+          <td>${dia.Viento} m/s</td>
+          <td>${dia.ET0} mm/día</td>
+        </tr>`;
+        tabla.innerHTML += fila;
+      });
+    }
+
+    function exportarCSV() {
+      const predicciones = JSON.parse(document.getElementById('exportar_csv').dataset.predicciones);
+      fetch('/exportar_csv', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ predicciones: predicciones })
+      })
+      .then(response => {
+        if (!response.ok) {
+          throw new Error(`Error al exportar CSV: ${response.status} ${response.statusText}`);
         }
+        return response.blob();
+      })
+      .then(blob => {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = url;
+        a.download = 'predicciones.csv';
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+      })
+      .catch(error => {
+        alert(`Error al exportar CSV: ${error.message}`);
+      });
+    }
 
-        // Asegurar que el mapa se renderice correctamente al cargar la página
-        setTimeout(() => {
-            map.invalidateSize();
-        }, 500);
-    </script>
+    setTimeout(() => {
+      map.invalidateSize();
+    }, 500);
+
+    function verGradosDia() {
+      const lat = document.getElementById('lat').value;
+      const lon = document.getElementById('lon').value;
+
+      if (!lat || !lon) {
+        alert("Por favor, ingrese una latitud y longitud válidas.");
+        return;
+      }
+
+      fetch('/prever-gd', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lat: lat, lon: lon })
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.alerta) {
+          if (confirm(`⚠️ Atención: Se detectó un GD de ${data.gd} °C. Esto indica un crecimiento acelerado de la planta. ¿Deseás continuar al módulo de GD?`)) {
+            window.location.href = `/grados-dia?lat=${lat}&lon=${lon}`;
+          }
+        } else {
+          window.location.href = `/grados-dia?lat=${lat}&lon=${lon}`;
+        }
+      })
+      .catch(error => {
+        alert("Error al prever GD: " + error.message);
+      });
+    }
+  </script>
 </body>
 </html>
