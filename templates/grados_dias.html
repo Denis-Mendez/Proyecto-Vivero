@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>Grados Día Acumulados</title>
+    <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
@@ -25,11 +26,61 @@
     <div class="container">
         <h1 class="mb-4">Grados Día Acumulados (GD)</h1>
 
+        <!-- Tarjeta visual de GD acumulado -->
+        <div class="card-panel {{ 'red lighten-2' if total_gd >= 150 else 'orange lighten-2' if total_gd >= 100 else 'green lighten-2' }} white-text center-align mb-4">
+            <h5>🌡️ GD Acumulado Actual</h5>
+            <h3 style="font-weight: bold;">{{ total_gd }} °C</h3>
+        </div>
+
+        <!-- Barra de progreso visual -->
+        <p class="text-center">📊 Progresión hacia umbral fisiológico de manejo (150 GD)</p>
+        <div class="progress">
+            <div class="progress-bar bg-success" role="progressbar" style="width: {{ (total_gd/150)*100 if total_gd <= 150 else 100 }}%;" aria-valuenow="{{ total_gd }}" aria-valuemin="0" aria-valuemax="150"></div>
+        </div>
+        <p class="text-center"><strong>{{ total_gd }} / 150 °C</strong> GD acumulados</p>
+
         {% if alerta %}
             <div class="alert alert-warning">
                 🔥 <strong>Advertencia:</strong> Se han detectado días con grados día elevados. Es probable que la planta esté creciendo rápidamente.
             </div>
         {% endif %}
+
+        {% if alerta_predictiva %}
+          <div class="alert alert-danger" style="border-left: 6px solid red; font-size: 1.1rem;">
+            ⚠️ <strong>Alerta predictiva:</strong> Se pronostican al menos <strong>3 días consecutivos</strong> con grados día elevados (GD ≥ 18°C).<br>
+            Considerá intervenir anticipadamente (despunte, sombreo, poda).
+          </div>
+        {% endif %}
+
+        <h4 class="mt-5 text-secondary">📋 Interpretación de GD diarios</h4>
+        <table class="table table-bordered">
+          <thead class="table-light">
+            <tr>
+              <th>Rango de GD</th>
+              <th>Estado fisiológico</th>
+              <th>Acciones sugeridas</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="table-success">
+              <td><strong>&lt; 13</strong></td>
+              <td>❄️ Crecimiento detenido o muy lento</td>
+              <td>Sin problemas</td>
+            </tr>
+            <tr class="table-warning">
+              <td><strong>13 - 17.9</strong></td>
+              <td>🌱 Crecimiento activo moderado</td>
+              <td>Moderado</td>
+            </tr>
+            <tr class="table-danger">
+              <td><strong>≥ 18</strong></td>
+              <td>🔥 Crecimiento acelerado</td>
+              <td>
+                Critico: <strong>Intervención necesaria</strong><br>
+              </td>
+            </tr>
+          </tbody>
+        </table>
 
         <p><strong>Total acumulado de GD:</strong> {{ total_gd }}</p>
 

@@ -49,6 +49,47 @@ def calcular_evapotranspiracion(T_max, T_min, T_media, RH, R_n, u2):
 
     return ET0
 
+import math
+
+def calcular_et0_hargreaves(tmax, tmin, latitud, dia_juliano):
+    tmedia = (tmax + tmin) / 2
+    dr = 1 + 0.033 * math.cos(2 * math.pi / 365 * dia_juliano)
+    delta = 0.409 * math.sin((2 * math.pi / 365 * dia_juliano) - 1.39)
+    phi = math.radians(latitud)
+    ws = math.acos(-math.tan(phi) * math.tan(delta))
+    ra = (24 * 60 / math.pi) * 0.0820 * dr * (
+        ws * math.sin(phi) * math.sin(delta) + math.cos(phi) * math.cos(delta) * math.sin(ws)
+    )
+    et0 = 0.0023 * (tmedia + 17.8) * math.sqrt(tmax - tmin) * ra
+    return round(et0, 2)
+
+def detectar_alertas_predictivas(parametros, tb=13, umbral_gd=18, dias_consecutivos=3):
+    tmax_list = parametros.get("temperature_max", [])
+    tmin_list = parametros.get("temperature_min", [])
+    num_dias = min(len(tmax_list), len(tmin_list))
+    
+    alerta_dias = []
+    dias_criticos = 0
+
+    for i in range(num_dias):
+        tmax = tmax_list[i]
+        tmin = tmin_list[i]
+        if tmax is None or tmin is None:
+            dias_criticos = 0
+            alerta_dias.append(None)
+            continue
+        tx = (tmax + tmin) / 2
+        gd = max(tx - tb, 0)
+        alerta_dias.append(round(gd, 2))
+        if gd >= umbral_gd:
+            dias_criticos += 1
+            if dias_criticos >= dias_consecutivos:
+                return True, alerta_dias
+        else:
+            dias_criticos = 0
+
+    return False, alerta_dias
+
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -82,7 +123,9 @@ def calcular():
         predicciones = []
         for i in range(min(num_dias, 14)):  # Solo iterar hasta 14 días como máximo
             try:
-                fecha = (datetime.datetime.today() + datetime.timedelta(days=i)).strftime("%d-%m-%Y")
+                fecha_obj = datetime.datetime.today() + datetime.timedelta(days=i)
+                dia_juliano = fecha_obj.timetuple().tm_yday
+                fecha = fecha_obj.strftime("%d-%m-%Y")
 
                 # Obtener valores de forma segura
                 T_max = parametros.get("temperature_max", [None] * num_dias)[i]
@@ -96,8 +139,8 @@ def calcular():
                     print(f"Datos incompletos para {fecha}, omitiendo...")
                     continue
 
-                T_media = (T_max + T_min) / 2
-                ET0 = calcular_evapotranspiracion(T_max, T_min, T_media, RH, R_n, u2)
+                # Calcular ET₀ usando Hargreaves
+                ET0 = calcular_et0_hargreaves(T_max, T_min, lat, dia_juliano)
 
                 predicciones.append({
                     "fecha": fecha,
@@ -106,7 +149,7 @@ def calcular():
                     "Humedad": round(RH, 2),
                     "Radiacion": round(R_n, 2),
                     "Viento": round(u2, 2),  # Nuevo campo en la tabla
-                    "ET0": round(ET0, 2)
+                    "ET0": ET0
                 })
             except Exception as e:
                 print(f"Error procesando datos para {fecha}: {str(e)}")
@@ -201,11 +244,15 @@ def grados_dia():
             valores_gd.append(round(gd, 2))
             temperaturas_promedio.append(round(tx, 2))
 
+        # Detectar alerta predictiva
+        alerta_predictiva, lista_gd = detectar_alertas_predictivas(parametros)
+
         return render_template(
             'grados_dias.html',
             datos=gd_dias,
             total_gd=round(acumulado, 2),
-            alerta=alerta,
+            alerta=alerta,  # alerta por días individuales
+            alerta_predictiva=alerta_predictiva,  # NUEVA alerta por días consecutivos
             fechas=fechas,
             valores_gd=valores_gd,
             temperaturas_promedio=temperaturas_promedio
