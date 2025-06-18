@@ -4,6 +4,8 @@ import math
 import datetime
 import csv
 import os
+import pandas as pd
+import json
 
 app = Flask(__name__)
 
@@ -165,18 +167,22 @@ def exportar_csv():
         data = request.json
         predicciones = data.get('predicciones', [])
 
-        if not predicciones:
-            return jsonify({'error': 'No hay datos para exportar'}), 400
+        # Crear el archivo CSV en memoria
+        from io import StringIO
+        import csv
 
-        # Crear archivo CSV
-        csv_filename = 'predicciones.csv'
-        with open(csv_filename, mode='w', newline='') as file:
-            writer = csv.DictWriter(file, fieldnames=predicciones[0].keys())
-            writer.writeheader()
-            for prediccion in predicciones:
-                writer.writerow(prediccion)
+        output = StringIO()
+        writer = csv.DictWriter(output, fieldnames=["fecha", "T_max", "T_min", "Humedad", "Radiacion", "Viento", "ET0"])
+        writer.writeheader()
+        writer.writerows(predicciones)
 
-        return send_file(csv_filename, as_attachment=True)
+        # Configurar la respuesta con el archivo CSV
+        response = app.response_class(
+            response=output.getvalue(),
+            mimetype='text/csv'  # Cambiar el encabezado Content-Type a 'text/csv'
+        )
+        response.headers['Content-Disposition'] = 'attachment; filename=predicciones.csv'
+        return response
 
     except Exception as e:
         return jsonify({'error': f'Error al exportar CSV: {str(e)}'}), 500
@@ -264,17 +270,9 @@ def grados_dia():
 @app.route('/prever-gd', methods=['POST'])
 def prever_gd():
     try:
-        # Obtener latitud y longitud desde la solicitud
         data = request.json
-        lat = data.get('lat')
-        lon = data.get('lon')
-
-        # Validar que lat y lon no sean None o vacíos
-        if not lat or not lon:
-            return jsonify({'error': 'Latitud y longitud son requeridas'}), 400
-
-        lat = float(lat)
-        lon = float(lon)
+        lat = float(data['lat'])
+        lon = float(data['lon'])
 
         # Obtener datos de predicción desde la API de Meteoblue
         datos_meteoblue = obtener_datos_meteoblue(lat, lon)
@@ -315,6 +313,252 @@ def prever_gd():
 
     except Exception as e:
         return jsonify({'error': f'Error al prever grados día: {str(e)}'}), 500
+
+# Nuevo endpoint para subir archivo CSV con alturas y generar proyecciones
+@app.route('/subir-alturas')
+def subir_alturas_form():
+    return '''
+    <!doctype html>
+    <title>Subir archivo de alturas</title>
+    <h1>📤 Cargar CSV de alturas desde Power BI</h1>
+    <form action="/procesar-alturas" method="post" enctype="multipart/form-data">
+      <input type="file" name="archivo">
+      <input type="submit" value="Cargar">
+    </form>
+    '''
+
+@app.route('/procesar_alturas', methods=['POST'])
+def procesar_alturas():
+    if 'archivo' not in request.files:
+        return "No se subió ningún archivo."
+
+    archivo = request.files['archivo']
+    if archivo.filename == '':
+        return "Nombre de archivo vacío."
+
+    if archivo:
+        df = pd.read_csv(archivo)
+
+        columnas_requeridas = {'Fecha', 'Local', 'MG', 'Individuo', 'Altura'}
+        if not columnas_requeridas.issubset(df.columns):
+            return f"Faltan columnas necesarias: {columnas_requeridas - set(df.columns)}"
+
+        df['Fecha'] = pd.to_datetime(df['Fecha'], errors='coerce')
+        df = df.dropna(subset=['Fecha'])
+
+        # Diccionario de ubicaciones con latitud y longitud
+        ubicaciones = {
+            "Local1": {"lat": -33.0, "lon": -56.0},
+            "Local2": {"lat": -34.5, "lon": -57.5},
+            "Local3": {"lat": -32.8, "lon": -55.2},
+            # Agrega más ubicaciones según sea necesario
+        }
+
+        # Calcular grados día reales
+        gd_reales = []
+        for _, row in df.iterrows():
+            fecha = row['Fecha']
+            local = row['Local']
+
+            if local not in ubicaciones:
+                gd_reales.append(None)
+                continue
+
+            lat = ubicaciones[local]['lat']
+            lon = ubicaciones[local]['lon']
+
+            # Obtener datos de Meteoblue
+            datos_meteoblue = obtener_datos_meteoblue(lat, lon)
+            if not datos_meteoblue:
+                gd_reales.append(None)
+                continue
+
+            parametros = datos_meteoblue.get("data_day", {})
+            tmax_list = parametros.get("temperature_max", [])
+            tmin_list = parametros.get("temperature_min", [])
+
+            # Buscar el índice correspondiente a la fecha
+            fecha_actual = datetime.datetime.strptime(fecha.strftime('%Y-%m-%d'), '%Y-%m-%d')
+            indice = (fecha_actual - datetime.datetime.today()).days
+
+            if 0 <= indice < len(tmax_list):
+                tmax = tmax_list[indice]
+                tmin = tmin_list[indice]
+                if tmax is not None and tmin is not None:
+                    tx = (tmax + tmin) / 2
+                    gd = max(tx - 13, 0)  # Temperatura base = 13
+                    gd_reales.append(gd)
+                else:
+                    gd_reales.append(None)
+            else:
+                gd_reales.append(None)
+
+        # Agregar los grados día reales al DataFrame
+        df['GD acumulado'] = gd_reales
+        print("Grados día calculados:", gd_reales)
+
+        # Verificar el contenido del DataFrame
+        print("Contenido del DataFrame después de agregar GD acumulado:", df)
+
+        proyecciones = []
+        series_chart = []
+
+        for (local, mg), grupo in df.groupby(['Local', 'MG']):
+            # Filtrar filas con valores válidos
+            grupo = grupo.dropna(subset=['GD acumulado', 'Altura'])
+            if len(grupo) < 2:
+                continue
+
+            x = grupo['GD acumulado']
+            y = grupo['Altura']
+            fechas = grupo['Fecha'].dt.strftime('%Y-%m-%d').tolist()
+
+            # Validar que x e y tengan al menos dos valores válidos
+            if len(x) < 2 or len(y) < 2:
+                continue
+
+            coef = pd.Series(y).corr(x)
+            pendiente = (y.iloc[-1] - y.iloc[0]) / (x.iloc[-1] - x.iloc[0])
+            gd_futuro = x.iloc[-1] + 30
+            altura_futura = y.iloc[-1] + pendiente * 30
+
+            proyecciones.append({
+                'Local': local,
+                'MG': mg,
+                'Altura actual': y.iloc[-1],
+                'GD actual': x.iloc[-1],
+                'Altura proyectada (30 días)': round(altura_futura, 2),
+                'Pendiente estimada': round(pendiente, 3),
+                'Correlación GD-Altura': round(coef, 2)
+            })
+            series_chart.append({
+                'label': f'{local} - {mg}',
+                'data': y.tolist(),
+                'fill': False
+            })
+
+        # Verificar las proyecciones y los datos del gráfico
+        print("Proyecciones generadas:", proyecciones)
+        print("Datos para el gráfico:", series_chart)
+
+        # Agregar las fechas únicas ordenadas para el gráfico
+        fechas_unicas = sorted(df['Fecha'].dt.strftime('%Y-%m-%d').unique().tolist())
+        print("Fechas únicas para el gráfico:", fechas_unicas)
+
+        html = '''
+        <!doctype html>
+        <html>
+        <head>
+        <title>Proyección de Altura</title>
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+        </head>
+        <body>
+        <h2>📊 Proyección de crecimiento por MG y Local</h2>
+        <table border="1" cellpadding="6" style="border-collapse: collapse;">
+          <tr>
+            <th>Local</th>
+            <th>MG</th>
+            <th>Altura actual</th>
+            <th>GD actual</th>
+            <th>Altura proyectada (30 días)</th>
+            <th>Pendiente estimada</th>
+            <th>Correlación GD-Altura</th>
+          </tr>
+        '''
+        for fila in proyecciones:
+            html += f"<tr><td>{fila['Local']}</td><td>{fila['MG']}</td><td>{fila['Altura actual']}</td><td>{fila['GD actual']}</td><td>{fila['Altura proyectada (30 días)']}</td><td>{fila['Pendiente estimada']}</td><td>{fila['Correlación GD-Altura']}</td></tr>"
+        html += "</table><br><h3>📈 Evolución de Altura</h3><canvas id='graficoAltura'></canvas><br><a href='/subir-alturas'>⬅️ Volver</a>"
+        html += f"""
+        <script>
+        const ctx = document.getElementById('graficoAltura').getContext('2d');
+        new Chart(ctx, {{
+            type: 'line',
+            data: {{
+                labels: {json.dumps(fechas_unicas)},
+                datasets: {json.dumps(series_chart)}
+            }},
+            options: {{
+                responsive: true,
+                scales: {{
+                    y: {{ beginAtZero: false }},
+                    x: {{ title: {{ display: true, text: 'Fecha' }} }}
+                }}
+            }}
+        }});
+        </script>
+        </body>
+        </html>
+        """
+        return html
+
+# Nuevo endpoint para subir archivos de alturas y temperaturas históricas
+@app.route('/subir-alturas-y-temperaturas')
+def subir_alturas_y_temperaturas_form():
+    return '''
+    <!doctype html>
+    <title>Subir archivos</title>
+    <h1>📤 Cargar CSV de alturas y temperaturas</h1>
+    <form action="/procesar-alturas-y-temperaturas" method="post" enctype="multipart/form-data">
+      <label>Alturas CSV:</label><br>
+      <input type="file" name="archivo_alturas"><br><br>
+      <label>Temperaturas CSV (con columnas Fecha, Tmax, Tmin):</label><br>
+      <input type="file" name="archivo_temp"><br><br>
+      <input type="submit" value="Cargar">
+    </form>
+    '''
+
+@app.route('/procesar-alturas-y-temperaturas', methods=['POST'])
+def procesar_alturas_y_temperaturas():
+    if 'archivo_alturas' not in request.files or 'archivo_temp' not in request.files:
+        return "Faltan archivos."
+
+    archivo_alturas = request.files['archivo_alturas']
+    archivo_temp = request.files['archivo_temp']
+
+    df_alturas = pd.read_csv(archivo_alturas)
+    df_temp = pd.read_csv(archivo_temp)
+
+    # Validación mínima
+    if not {'Fecha', 'Tmax', 'Tmin'}.issubset(df_temp.columns):
+        return "El archivo de temperaturas debe tener columnas: Fecha, Tmax, Tmin"
+    if not {'Fecha', 'Local', 'MG', 'Individuo', 'Altura'}.issubset(df_alturas.columns):
+        return "El archivo de alturas debe tener columnas: Fecha, Local, MG, Individuo, Altura"
+
+    # Convertir fechas
+    df_alturas['Fecha'] = pd.to_datetime(df_alturas['Fecha'])
+    df_temp['Fecha'] = pd.to_datetime(df_temp['Fecha'])
+
+    # Calcular GD = ((Tmax + Tmin)/2 - 13) con límite inferior 0
+    df_temp['GD'] = ((df_temp['Tmax'] + df_temp['Tmin']) / 2 - 13).clip(lower=0)
+
+    # Unir por fecha
+    df = df_alturas.merge(df_temp[['Fecha', 'GD']], on='Fecha', how='left')
+
+    # GD acumulado por grupo
+    df['GD acumulado'] = df.groupby(['Local', 'MG', 'Individuo'])['GD'].cumsum()
+
+    # Proyección lineal simple
+    resultados = []
+    for (local, mg), grupo in df.groupby(['Local', 'MG']):
+        if len(grupo) < 2:
+            continue
+        x = grupo['GD acumulado']
+        y = grupo['Altura']
+        pendiente = (y.iloc[-1] - y.iloc[0]) / (x.iloc[-1] - x.iloc[0])
+        altura_futura = y.iloc[-1] + pendiente * 30
+        resultados.append({
+            'Local': local,
+            'MG': mg,
+            'Altura actual': y.iloc[-1],
+            'Altura proyectada (30 días)': round(altura_futura, 2),
+            'Pendiente': round(pendiente, 3)
+        })
+
+    html = '<h2>📊 Resultados con temperaturas reales</h2><table border="1" cellpadding="5"><tr><th>Local</th><th>MG</th><th>Altura actual</th><th>Altura proyectada</th><th>Pendiente</th></tr>'
+    for fila in resultados:
+        html += f"<tr><td>{fila['Local']}</td><td>{fila['MG']}</td><td>{fila['Altura actual']}</td><td>{fila['Altura proyectada (30 días)']}</td><td>{fila['Pendiente']}</td></tr>"
+    html += '</table><br><a href="/subir-alturas-y-temperaturas">⬅️ Volver</a>'
+    return html
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
