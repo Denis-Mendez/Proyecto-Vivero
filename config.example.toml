@@ -1,0 +1,31 @@
+# Configuración del Simulador Vivero.
+# Copiar este archivo como config.toml en la misma carpeta que el ejecutable (o que run_desktop.py).
+# config.toml NO se sube a GitHub (está en .gitignore): ahí van las API keys.
+
+proveedor = "open-meteo"          # "open-meteo" o "meteoblue"
+
+[open_meteo]
+api_key = ""                      # vacío = servicio gratuito (solo uso no comercial)
+dias = 16                         # días de pronóstico (máximo 16)
+
+[meteoblue]
+api_key = ""
+
+[red]
+proxy = ""                        # ej. "http://proxy.empresa:8080" si la red corporativa lo requiere
+timeout_s = 15
+
+[cache]
+vigencia_horas = 3                # reusar la última consulta del mismo punto durante este tiempo
+
+[ubicacion]                       # punto por defecto al abrir la app
+nombre = "Vivero"
+lat = -33.12
+lon = -58.30
+
+[grados_dia]                      # HIPÓTESIS SIN VALIDAR — calibrar con datos de altura
+tb = 13.0                         # temperatura base, °C
+tsup = 35.0                       # umbral superior (corte horizontal), °C
+alerta_diaria = 18.0              # GD diario que dispara alerta
+alerta_dias_consecutivos = 3
+umbral_acumulado = 150.0          # referencia de manejo en la barra de progreso

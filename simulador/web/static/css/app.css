@@ -1,0 +1,23 @@
+:root { --verde: #2e7d32; --verde-osc: #1b5e20; --fondo: #f4f6f3; --borde: #dfe5dc; }
+body { background: var(--fondo); font-family: "Segoe UI", system-ui, sans-serif; color: #222; }
+.barra { background: var(--verde-osc); }
+.barra .navbar-brand { color: #fff; font-weight: 600; }
+.barra .nav-link { color: rgba(255,255,255,.75); }
+.barra .nav-link.active, .barra .nav-link:hover { color: #fff; }
+.tarjeta { background: #fff; border: 1px solid var(--borde); border-radius: 10px; padding: 16px; }
+.titulo-sec { color: var(--verde-osc); font-weight: 600; text-transform: uppercase; letter-spacing: .03em; font-size: .8rem; }
+#map { height: 340px; border-radius: 8px; }
+.btn-verde { background: var(--verde); color: #fff; }
+.btn-verde:hover { background: var(--verde-osc); color: #fff; }
+.kpi { background: #fff; border: 1px solid var(--borde); border-radius: 10px; padding: 12px 14px; height: 100%; }
+.kpi-lbl { font-size: .75rem; color: #667; }
+.kpi-val { font-size: 1.8rem; font-weight: 600; color: var(--verde-osc); line-height: 1.2; font-variant-numeric: tabular-nums; }
+.kpi-u { font-size: .72rem; color: #889; }
+.grafico { position: relative; height: 260px; }
+.tabla { font-size: .82rem; font-variant-numeric: tabular-nums; }
+.tabla th, .tabla td { text-align: right; white-space: nowrap; }
+.tabla th:first-child, .tabla td:first-child { text-align: left; }
+.tabla .unid th { font-weight: 400; color: #889; font-size: .72rem; border-top: 0; }
+.nota { font-size: .78rem; color: #667; margin-bottom: 0; }
+.experimental { background: #fff8e1; border-left: 4px solid #f9a825; padding: 10px 14px; border-radius: 6px; font-size: .85rem; }
+.pie { text-align: center; font-size: .72rem; color: #889; padding: 12px; }
