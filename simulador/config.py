@@ -37,7 +37,7 @@ def carpeta_datos() -> Path:
     base = carpeta_base()
     try:
         prueba = base / ".escritura_ok"
-        prueba.write_text("ok")
+        prueba.write_text("ok", encoding="utf-8")
         prueba.unlink()
         return base
     except OSError:

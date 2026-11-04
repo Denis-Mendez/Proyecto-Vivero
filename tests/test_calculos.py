@@ -62,7 +62,7 @@ def test_gd_acumulado_y_racha():
 
 # --- Proveedor Open-Meteo (respuesta real guardada el 04-11-2026) ---
 def test_interpretar_openmeteo():
-    p = openmeteo.interpretar(json.loads((FIX / "om.json").read_text()))
+    p = openmeteo.interpretar(json.loads((FIX / "om.json").read_text(encoding="utf-8")))
     assert len(p.dias) == 16 and p.elevacion == 14.0
     assert p.dias[0].fecha == "2026-11-04" and p.dias[0].rs == 26.62
 
@@ -71,7 +71,7 @@ def test_pm_consistente_con_openmeteo():
     """Nuestro PM diario vs la ET0 horaria de Open-Meteo: error medio < 0,4 mm/día."""
     from simulador.config import DEFAULTS
     from simulador.servicio import calcular_tabla
-    p = openmeteo.interpretar(json.loads((FIX / "om.json").read_text()))
+    p = openmeteo.interpretar(json.loads((FIX / "om.json").read_text(encoding="utf-8")))
     filas = calcular_tabla(p, DEFAULTS)["filas"]
     mae = sum(abs(f["et0_pm"] - f["et0_ref"]) for f in filas) / len(filas)
     assert mae < 0.4

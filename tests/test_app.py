@@ -11,7 +11,7 @@ from simulador.providers import openmeteo
 from simulador.providers.base import ErrorProveedor
 
 FIX = Path(__file__).parent / "fixtures"
-RESPUESTA = json.loads((FIX / "om.json").read_text())
+RESPUESTA = json.loads((FIX / "om.json").read_text(encoding="utf-8"))
 
 
 @pytest.fixture
