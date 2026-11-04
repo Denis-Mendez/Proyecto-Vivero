@@ -67,3 +67,13 @@ Las API keys van en `config.toml` (excluido de git) o en las variables de entorn
 
 - Allen et al. (1998). FAO Irrigation and Drainage Paper 56. https://www.fao.org/4/x0490e/x0490e00.htm
 - Open-Meteo API: https://open-meteo.com/en/docs
+
+## Descargar el ejecutable (sin instalar Python)
+
+GitHub genera el `.exe` automáticamente en cada push (`.github/workflows/build-windows.yml`):
+
+1. En el repo, pestaña **Actions** → **Build Windows** → la ejecución más reciente (tilde verde).
+2. Abajo, en **Artifacts**, descargar **SimuladorVivero-windows** (zip).
+3. Descomprimir y abrir `SimuladorVivero.exe`. Para otras PCs, copiar la carpeta completa.
+
+Para una versión "oficial" con descarga permanente, crear un tag (ej. `v2.0.0`): el zip queda en **Releases**.

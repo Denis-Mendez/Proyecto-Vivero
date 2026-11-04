@@ -4,11 +4,11 @@ REM Requiere: Python 3.11+ en Windows y  pip install -r requirements-dev.txt
 cd /d %~dp0\..
 pyinstaller --noconfirm --clean --onedir --windowed ^
   --name SimuladorVivero ^
-  --icon simulador\web\static\favicon.ico ^
-  --add-data "simulador\web\templates;simulador\web\templates" ^
-  --add-data "simulador\web\static;simulador\web\static" ^
+  --icon "%CD%\simulador\web\static\favicon.ico" ^
+  --add-data "%CD%\simulador\web\templates;simulador\web\templates" ^
+  --add-data "%CD%\simulador\web\static;simulador\web\static" ^
   --distpath build\dist --workpath build\work --specpath build ^
-  run_desktop.py
+  "%CD%\run_desktop.py"
 if errorlevel 1 exit /b 1
 copy /Y config.example.toml build\dist\SimuladorVivero\config.toml >nul
 echo.

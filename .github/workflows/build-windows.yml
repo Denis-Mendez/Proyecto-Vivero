@@ -1,0 +1,51 @@
+# Genera la app de escritorio para Windows en una máquina de GitHub.
+# - Cada push a main o v2-escritorio: corre los tests y deja el zip en Actions → (la ejecución) → Artifacts.
+# - Al crear un tag que empiece con "v" (ej. v2.0.0): además publica el zip en Releases (descarga permanente).
+name: Build Windows
+
+on:
+  push:
+    branches: [main, v2-escritorio]
+    tags: ["v*"]
+  workflow_dispatch:        # botón "Run workflow" para generarlo a mano
+
+permissions:
+  contents: write           # necesario para publicar en Releases
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Instalar dependencias
+        run: pip install -r requirements-dev.txt
+
+      - name: Tests (ejemplos FAO-56 y app)
+        run: python -m pytest -q
+
+      - name: Generar ejecutable
+        shell: cmd
+        run: build\build_windows.bat
+
+      - name: Comprimir carpeta portable
+        shell: pwsh
+        run: Compress-Archive -Path build\dist\SimuladorVivero -DestinationPath SimuladorVivero-windows.zip
+
+      - name: Subir como artefacto
+        uses: actions/upload-artifact@v4
+        with:
+          name: SimuladorVivero-windows
+          path: build/dist/SimuladorVivero
+          retention-days: 90
+
+      - name: Publicar en Releases (solo con tag v*)
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: SimuladorVivero-windows.zip
