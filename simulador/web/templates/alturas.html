@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block titulo %}Alturas · Simulador Vivero{% endblock %}
+{% block contenido %}
+<div class="experimental mb-3">
+  <b>Modelo experimental (preparación de la fase 3).</b> Ajusta una recta altura ~ GD acumulados por Local y MG.
+  Supone crecimiento lineal en GD, válido solo dentro del rango medido. Tb = {{ g.tb }} °C y Tsup = {{ g.tsup }} °C sin validar.
+</div>
+<div class="row g-3">
+  <div class="col-lg-4"><div class="tarjeta">
+    <h2 class="h6 titulo-sec">Cargar datos</h2>
+    <form method="post" enctype="multipart/form-data">
+      <label class="form-label small">Alturas (CSV: Fecha, Local, MG, Individuo, Altura)</label>
+      <input class="form-control form-control-sm mb-2" type="file" name="archivo_alturas" accept=".csv">
+      <label class="form-label small">Temperaturas diarias (CSV: Fecha, Tmax, Tmin)</label>
+      <input class="form-control form-control-sm mb-2" type="file" name="archivo_temp" accept=".csv">
+      <div class="form-check small mb-3"><input class="form-check-input" type="checkbox" name="proyectar" id="proyectar" value="1">
+        <label class="form-check-label" for="proyectar">Proyectar con los GD del pronóstico</label></div>
+      <button class="btn btn-verde w-100">Analizar</button>
+    </form>
+    <p class="nota mt-2">La serie de temperaturas debe cubrir todos los días desde el inicio del cultivo, sin huecos.
+      Se aceptan separador <code>,</code> o <code>;</code> y fechas AAAA-MM-DD o DD/MM/AAAA.</p>
+  </div></div>
+  <div class="col-lg-8">
+    {% if error %}<div class="alert alert-danger">{{ error }}</div>{% endif %}
+    {% if res %}
+      {% if aviso %}<div class="alert alert-light border small">{{ aviso }} La proyección parte de la última medición: es válida si la serie de temperaturas llega hasta hoy.</div>{% endif %}
+      {% if res.huecos_temperatura %}<div class="alert alert-warning small">La serie de temperaturas tiene huecos: {% for a,b in res.huecos_temperatura %}{{ a }} → {{ b }}{% if not loop.last %}; {% endif %}{% endfor %}. El GD acumulado queda subestimado.</div>{% endif %}
+      {% if res.mediciones_sin_temperatura %}<div class="alert alert-warning small">{{ res.mediciones_sin_temperatura }} mediciones sin temperatura para su fecha (excluidas).</div>{% endif %}
+      <div class="tarjeta"><div class="table-responsive">
+        <table class="table table-sm tabla">
+          <thead><tr><th>Local</th><th>MG</th><th>Fechas</th><th>Plantas</th><th>Última medición</th><th>Altura media (cm)</th>
+            <th>GD acum.</th><th>cm / GD</th><th>r</th><th>Altura proyectada (cm)</th></tr></thead>
+          <tbody>{% for f in res.resultados %}
+            <tr><td>{{ f.local }}</td><td>{{ f.mg }}</td><td>{{ f.n_fechas }}</td><td>{{ f.n_plantas }}</td><td>{{ f.ultima_fecha }}</td>
+              <td>{{ f.altura_actual }}</td><td>{{ f.gd_actual }}</td><td>{{ f.pendiente if f.pendiente is not none else '–' }}</td>
+              <td>{{ f.r if f.r is not none else '–' }}</td><td>{{ f.altura_proyectada if f.altura_proyectada is not none else '–' }}</td></tr>
+          {% else %}<tr><td colspan="10" class="text-secondary">No hay grupos con datos válidos.</td></tr>{% endfor %}</tbody>
+        </table>
+      </div></div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

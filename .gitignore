@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+config.toml
+*.db
+.escritura_ok
+build/dist/
+build/work/
+dist/
+*.spec.bak
+.venv/
