@@ -2,56 +2,64 @@
 {% block head %}<link rel="stylesheet" href="{{ url_for('static', filename='vendor/leaflet/leaflet.css') }}">{% endblock %}
 {% block contenido %}
 <div class="row g-3">
-  <div class="col-lg-4">
+  <div class="col-lg-4 col-xl-3">
     <div class="tarjeta">
-      <h2 class="h6 titulo-sec">Ubicación</h2>
-      <div id="map"></div>
+      <h2 class="titulo-sec">Ubicación</h2>
+      <div id="map" data-zoom="{{ ubicacion.zoom|default(16) }}"></div>
       <div class="row g-2 mt-2">
-        <div class="col-6"><label class="form-label small" for="lat">Latitud</label>
-          <input class="form-control form-control-sm" id="lat" value="{{ ubicacion.lat }}"></div>
-        <div class="col-6"><label class="form-label small" for="lon">Longitud</label>
-          <input class="form-control form-control-sm" id="lon" value="{{ ubicacion.lon }}"></div>
+        <div class="col-6"><label class="form-label small mb-1" for="lat">Latitud</label>
+          <input class="form-control form-control-sm" id="lat" inputmode="decimal" value="{{ ubicacion.lat }}"></div>
+        <div class="col-6"><label class="form-label small mb-1" for="lon">Longitud</label>
+          <input class="form-control form-control-sm" id="lon" inputmode="decimal" value="{{ ubicacion.lon }}"></div>
       </div>
-      <button class="btn btn-verde w-100 mt-3" id="btn-consultar">Consultar pronóstico</button>
+      <div class="d-flex gap-2 mt-3">
+        <button class="btn btn-verde flex-grow-1" id="btn-consultar">Consultar pronóstico</button>
+        <button class="btn btn-contorno" id="btn-vivero" title="Volver al {{ ubicacion.nombre }}"
+                data-lat="{{ ubicacion.lat }}" data-lon="{{ ubicacion.lon }}">Vivero</button>
+      </div>
       <div id="estado" class="small mt-2"></div>
     </div>
   </div>
 
-  <div class="col-lg-8">
-    <div id="aviso-fuente" class="small text-secondary mb-2"></div>
-    <div class="row g-3 mb-3" id="kpis">
+  <div class="col-lg-8 col-xl-9">
+    <div id="aviso-fuente" class="fuente-datos mb-2"></div>
+    <div class="row g-2 g-md-3 mb-3">
       <div class="col-6 col-md-3"><div class="kpi"><div class="kpi-lbl">ET₀ hoy</div><div class="kpi-val" id="k-et0">–</div><div class="kpi-u">mm/día</div></div></div>
-      <div class="col-6 col-md-3"><div class="kpi"><div class="kpi-lbl">ET₀ próximos 7 días</div><div class="kpi-val" id="k-et07">–</div><div class="kpi-u">mm</div></div></div>
-      <div class="col-6 col-md-3"><div class="kpi"><div class="kpi-lbl">Lluvia pronosticada</div><div class="kpi-val" id="k-lluvia">–</div><div class="kpi-u" id="k-lluvia-u">mm</div></div></div>
-      <div class="col-6 col-md-3"><div class="kpi"><div class="kpi-lbl">Grados día acumulados</div><div class="kpi-val" id="k-gd">–</div><div class="kpi-u">°C·día · Tb {{ g.tb }} °C (experimental)</div></div></div>
+      <div class="col-6 col-md-3"><div class="kpi k2"><div class="kpi-lbl">ET₀ 7 días</div><div class="kpi-val" id="k-et07">–</div><div class="kpi-u">mm acumulados</div></div></div>
+      <div class="col-6 col-md-3"><div class="kpi k3"><div class="kpi-lbl">Lluvia</div><div class="kpi-val" id="k-lluvia">–</div><div class="kpi-u" id="k-lluvia-u">mm</div></div></div>
+      <div class="col-6 col-md-3"><div class="kpi k4"><div class="kpi-lbl">Grados día</div><div class="kpi-val" id="k-gd">–</div><div class="kpi-u">acumulados · Tb {{ g.tb }} °C (exp.)</div></div></div>
     </div>
 
     <div class="tarjeta mb-3">
-      <h2 class="h6 titulo-sec">Demanda evaporativa y lluvia</h2>
-      <div class="grafico"><canvas id="grafico"></canvas></div>
+      <h2 class="titulo-sec">Demanda evaporativa y lluvia</h2>
+      <div class="grafico"><canvas id="grafico" aria-label="Gráfico de ET0 y lluvia diaria"></canvas></div>
       <p class="nota mt-2">ET₀ Penman-Monteith FAO-56 calculada con la radiación solar del pronóstico. Hargreaves se muestra como
         control (usa solo temperatura y suele errar en días nublados). La ET₀ es demanda atmosférica de referencia:
         no equivale directamente a la lámina de riego de los plantines.</p>
     </div>
 
     <div class="tarjeta">
-      <div class="d-flex justify-content-between align-items-center">
-        <h2 class="h6 titulo-sec mb-0">Detalle diario</h2>
-        <a id="btn-csv" class="btn btn-sm btn-outline-secondary disabled" href="#">Exportar CSV</a>
+      <div class="d-flex justify-content-between align-items-center gap-2">
+        <h2 class="titulo-sec mb-0">Detalle diario</h2>
+        <a id="btn-csv" class="btn btn-sm btn-contorno disabled" href="#">Exportar CSV</a>
       </div>
       <div class="table-responsive mt-2">
         <table class="table table-sm tabla">
           <thead><tr>
-            <th>Fecha</th><th>T máx</th><th>T mín</th><th>HR máx</th><th>HR mín</th>
-            <th>Viento 2 m</th><th>Radiación</th><th>Lluvia</th>
-            <th>ET₀ PM</th><th>ET₀ HS</th><th title="ET₀ calculada por el proveedor, a paso horario">ET₀ ref.</th><th>GD</th>
+            <th>Fecha</th><th>T máx</th><th>T mín</th>
+            <th class="d-none d-md-table-cell">HR máx</th><th class="d-none d-md-table-cell">HR mín</th>
+            <th class="d-none d-md-table-cell">Viento 2 m</th><th class="d-none d-sm-table-cell">Radiación</th><th>Lluvia</th>
+            <th>ET₀ PM</th><th class="d-none d-md-table-cell">ET₀ HS</th>
+            <th class="d-none d-lg-table-cell" title="ET₀ calculada por el proveedor, a paso horario">ET₀ ref.</th><th>GD</th>
           </tr><tr class="unid">
-            <th></th><th>°C</th><th>°C</th><th>%</th><th>%</th><th>m/s</th><th>MJ/m²</th><th>mm</th>
-            <th>mm</th><th>mm</th><th>mm</th><th>°C·d</th>
+            <th></th><th>°C</th><th>°C</th><th class="d-none d-md-table-cell">%</th><th class="d-none d-md-table-cell">%</th>
+            <th class="d-none d-md-table-cell">m/s</th><th class="d-none d-sm-table-cell">MJ/m²</th><th>mm</th>
+            <th>mm</th><th class="d-none d-md-table-cell">mm</th><th class="d-none d-lg-table-cell">mm</th><th>°C·d</th>
           </tr></thead>
-          <tbody id="tabla"><tr><td colspan="12" class="text-secondary">Elegí un punto y consultá.</td></tr></tbody>
+          <tbody id="tabla"><tr><td colspan="12" class="text-secondary">Cargando…</td></tr></tbody>
         </table>
       </div>
+      <p class="nota mt-2 d-md-none">En el celular se muestran las columnas principales; el CSV incluye todas.</p>
     </div>
   </div>
 </div>
@@ -59,5 +67,5 @@
 {% block scripts %}
 <script src="{{ url_for('static', filename='vendor/leaflet/leaflet.js') }}"></script>
 <script src="{{ url_for('static', filename='vendor/chart.umd.js') }}"></script>
-<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+<script src="{{ url_for('static', filename='js/app.js') }}?v={{ version }}"></script>
 {% endblock %}

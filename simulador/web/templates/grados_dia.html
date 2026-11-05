@@ -7,14 +7,14 @@
   ≥ {{ g.alerta_diaria }} GD y referencia de {{ g.umbral_acumulado }} GD acumulados son <b>hipótesis de trabajo sin validar</b>
   para las especies del vivero. Se cambian en <code>config.toml</code> y se calibrarán con mediciones de altura.
 </div>
-<p class="small text-secondary">Fuente: {{ t.fuente }} · punto {{ '%.3f'|format(t.lat) }}, {{ '%.3f'|format(t.lon) }} ·
-  consultado {{ t.consultado[:16]|replace('T',' ') }}{% if t.desde_cache %} · <span class="badge text-bg-warning">datos guardados</span>{% endif %}</p>
+<p class="fuente-datos">Fuente: {{ t.fuente }} · punto {{ '%.3f'|format(t.lat) }}, {{ '%.3f'|format(t.lon) }} ·
+  consultado {{ t.consultado[:16]|replace('T',' ') }}{% if t.desde_cache %} · <span class="badge text-bg-light border">datos guardados</span>{% endif %}</p>
 
 <div class="row g-3 mb-3">
-  <div class="col-md-4"><div class="kpi"><div class="kpi-lbl">GD acumulados ({{ t.filas|length }} días)</div>
+  <div class="col-md-4"><div class="kpi k4"><div class="kpi-lbl">GD acumulados ({{ t.filas|length }} días)</div>
     <div class="kpi-val">{{ '%.0f'|format(t.gd_total) }}</div><div class="kpi-u">°C·día</div>
     {% set pct = [100, (t.gd_total / g.umbral_acumulado * 100)]|min %}
-    <div class="progress mt-2" style="height:6px"><div class="progress-bar bg-success" style="width: {{ pct }}%"></div></div>
+    <div class="progress mt-2" style="height:6px"><div class="progress-bar" style="width: {{ pct }}%"></div></div>
     <div class="kpi-u mt-1">{{ '%.0f'|format(t.gd_total) }} / {{ g.umbral_acumulado|int }} GD de referencia</div></div></div>
   <div class="col-md-8">
     {% if t.alerta_consecutiva %}
@@ -30,11 +30,11 @@
 
 <div class="row g-3">
   <div class="col-lg-8"><div class="tarjeta">
-    <h2 class="h6 titulo-sec">GD diarios y acumulados</h2>
-    <div class="grafico" style="height:300px"><canvas id="graficoGD"></canvas></div>
+    <h2 class="titulo-sec">GD diarios y acumulados</h2>
+    <div class="grafico"><canvas id="graficoGD"></canvas></div>
   </div></div>
   <div class="col-lg-4"><div class="tarjeta">
-    <h2 class="h6 titulo-sec">Detalle</h2>
+    <h2 class="titulo-sec">Detalle</h2>
     <table class="table table-sm tabla">
       <thead><tr><th>Fecha</th><th>T media</th><th>GD</th><th>Acum.</th></tr></thead>
       <tbody>{% for f in t.filas %}
@@ -55,13 +55,13 @@
     data: {
       labels: filas.map(f => f.fecha.slice(8,10) + "/" + f.fecha.slice(5,7)),
       datasets: [
-        { type: "bar", label: "GD diario", data: filas.map(f => f.gd), backgroundColor: "rgba(46,125,50,0.55)", borderRadius: 3, yAxisID: "y" },
-        { type: "line", label: "GD acumulado", data: filas.map(f => f.gd_acum), borderColor: "#e65100", backgroundColor: "#e65100", tension: 0.2, yAxisID: "y2", pointRadius: 2 },
+        { type: "bar", label: "GD diario", data: filas.map(f => f.gd), backgroundColor: "rgba(23,149,78,0.65)", borderRadius: 3, yAxisID: "y" },
+        { type: "line", label: "GD acumulado", data: filas.map(f => f.gd_acum), borderColor: "#FF5500", backgroundColor: "#FF5500", tension: 0.2, yAxisID: "y2", pointRadius: 2 },
       ]
     },
     options: { responsive: true, maintainAspectRatio: false, interaction: { mode: "index", intersect: false },
       plugins: { legend: { position: "bottom", labels: { boxWidth: 12 } } },
-      scales: { y: { beginAtZero: true, title: { display: true, text: "GD diario (°C·día)" }, grid: { color: "#eee" } },
+      scales: { y: { beginAtZero: true, title: { display: true, text: "GD diario (°C·día)" }, grid: { color: "#E3ECEE" } },
                 y2: { position: "right", beginAtZero: true, title: { display: true, text: "GD acumulado" }, grid: { display: false } },
                 x: { grid: { display: false } } } }
   });

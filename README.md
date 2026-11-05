@@ -3,7 +3,8 @@
 Herramienta de apoyo a decisiones para vivero forestal: pronóstico meteorológico, ET₀ FAO-56,
 grados día y, en desarrollo, simulación del crecimiento de plantines.
 
-Versión 2 (rama `v2-escritorio`): app de escritorio portable para Windows, que también puede correr como web.
+Versión 2: aplicación web publicada en PythonAnywhere (https://denismendez.pythonanywhere.com),
+con la identidad visual de Montes del Plata y adaptada a celular.
 
 ## Estado de los modelos
 
@@ -14,31 +15,23 @@ Versión 2 (rama `v2-escritorio`): app de escritorio portable para Windows, que 
 | Grados día | **Experimental**: Tb 13 °C, Tsup 35 °C y umbrales sin validar por especie |
 | Altura ~ GD acumulados | **Experimental**: regresión lineal, preparación para la fase 3 |
 
-## Usar en la PC (desarrollo)
+## Desarrollo local
 
-```bat
+```bash
 python -m venv .venv
-.venv\Scripts\activate
+.venv\Scripts\activate          # Windows  (Linux/Mac: source .venv/bin/activate)
 pip install -r requirements-dev.txt
-copy config.example.toml config.toml      & rem editar si hace falta
-python run_desktop.py                     & rem ventana de escritorio
-python run_desktop.py --navegador         & rem o en el navegador
-python -m pytest                          & rem tests
+python app.py                    # http://127.0.0.1:5000
+python -m pytest                 # tests
 ```
 
-Requiere Python 3.11 o superior.
+Requiere Python 3.11 o superior. `config.toml` es opcional (ver `config.example.toml`).
 
-## Generar la versión portable
+## Publicar cambios en PythonAnywhere
 
-```bat
-build\build_windows.bat
-```
-
-Crea `build\dist\SimuladorVivero\` con `SimuladorVivero.exe` y `config.toml`. Se copia la carpeta completa
-(a un pendrive, una carpeta compartida, etc.) y se ejecuta sin instalar Python. Usa Edge WebView2, que viene con Windows 10/11.
-
-La base `simulador_vivero.db` (caché e histórico de consultas) se crea junto al .exe; si esa carpeta
-no permite escribir, se usa `%LOCALAPPDATA%\SimuladorVivero`.
+1. Subir los cambios a `main` en GitHub.
+2. En la consola Bash de PythonAnywhere: `cd ~/Proyecto-Vivero && git pull`
+3. Pestaña **Web** → **Reload**.
 
 ## Estructura
 
@@ -47,11 +40,10 @@ simulador/
   core/        cálculo puro, sin Flask: et0.py (FAO-56), gdd.py, alturas.py
   providers/   fuentes de datos: openmeteo.py (principal), meteoblue.py (alternativa)
   storage/     cache.py (SQLite: caché, modo sin conexión, histórico)
-  web/         rutas Flask, plantillas, estáticos (librerías JS locales)
+  web/         rutas Flask, plantillas, estáticos (librerías JS, logo y tipografía locales)
   servicio.py  une proveedor + caché + cálculos
-  config.py    configuración (config.toml) y rutas de datos portables
-run_desktop.py lanzador de escritorio (pywebview)
-app.py         entrada web (gunicorn app:app, compatible con Render)
+  config.py    configuración (config.toml) y valores por defecto (ubicación del vivero)
+app.py         entrada web (PythonAnywhere / gunicorn)
 tests/         tests de cálculos (ejemplos FAO-56) y de la app
 ```
 
@@ -68,12 +60,8 @@ Las API keys van en `config.toml` (excluido de git) o en las variables de entorn
 - Allen et al. (1998). FAO Irrigation and Drainage Paper 56. https://www.fao.org/4/x0490e/x0490e00.htm
 - Open-Meteo API: https://open-meteo.com/en/docs
 
-## Descargar el ejecutable (sin instalar Python)
+## Identidad visual
 
-GitHub genera el `.exe` automáticamente en cada push (`.github/workflows/build-windows.yml`):
-
-1. En el repo, pestaña **Actions** → **Build Windows** → la ejecución más reciente (tilde verde).
-2. Abajo, en **Artifacts**, descargar **SimuladorVivero-windows** (zip).
-3. Descomprimir y abrir `SimuladorVivero.exe`. Para otras PCs, copiar la carpeta completa.
-
-Para una versión "oficial" con descarga permanente, crear un tag (ej. `v2.0.0`): el zip queda en **Releases**.
+Colores y logo según el Manual de marca de Montes del Plata (set. 2022): verde #17954E, petróleo #194E50,
+gris azulado #CFDFE2; secundarios (#007AFF, #21D4BE, #A9F236, #FF5500) solo en detalles y gráficos.
+Texto en Helvetica/Arial; números destacados en Bebas Neue (licencia OFL, incluida).

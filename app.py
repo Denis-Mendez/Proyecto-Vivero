@@ -1,6 +1,6 @@
-"""Punto de entrada web (compatibilidad con Render: `gunicorn app:app`).
+"""Punto de entrada web (PythonAnywhere: `from app import app as application`; gunicorn: `app:app`).
 
-Toda la lógica vive en el paquete `simulador/`. Para la versión de escritorio usar run_desktop.py.
+Toda la lógica vive en el paquete `simulador/`. Para desarrollo local: python app.py
 """
 import os
 

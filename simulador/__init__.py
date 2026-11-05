@@ -1,10 +1,10 @@
-"""Simulador Vivero — app Flask usable como escritorio (pywebview) o web (gunicorn)."""
+"""Simulador Vivero — app web Flask."""
 from flask import Flask
 
 from .config import cargar_config, carpeta_datos
 from .storage.cache import Cache
 
-__version__ = "2.0.0-dev"
+__version__ = "2.1.0"
 
 
 def create_app(cfg: dict | None = None, ruta_db=None) -> Flask:

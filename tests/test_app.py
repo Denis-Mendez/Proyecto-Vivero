@@ -78,3 +78,9 @@ def test_alturas(cliente):
              "archivo_temp": (open(FIX / "temperaturas.csv", "rb"), "t.csv"), "proyectar": "1"}
     r = cliente.post("/alturas", data=datos, content_type="multipart/form-data")
     assert r.status_code == 200 and b"MG1" in r.data
+
+
+def test_ubicacion_por_defecto_vivero(cliente):
+    r = cliente.get("/")
+    assert b'value="-33.1295"' in r.data and b'value="-58.1924"' in r.data
+    assert b"logo-mdp-blanco.svg" in r.data
